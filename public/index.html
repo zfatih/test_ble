@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Socket.IO chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font: 13px Helvetica, Arial;
+        }
+
+        form {
+            background: #000;
+            padding: 3px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+
+        form input {
+            border: 0;
+            padding: 10px;
+            width: 90%;
+            margin-right: .5%;
+        }
+
+        form button {
+            width: 9%;
+            background: rgb(130, 224, 255);
+            border: none;
+            padding: 10px;
+        }
+
+        #messages {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        #messages li {
+            padding: 5px 10px;
+        }
+
+        #messages li:nth-child(odd) {
+            background: #eee;
+        }
+    </style>
+</head>
+
+<body>
+    <ul id="messages"></ul>
+    <form action="">
+        <input id="m" autocomplete="off" /><button>Send</button>
+    </form>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script>
+        //var socket = io('http://localhost:3254/');
+        var socket = io('https://brave.semirsakanovic.com/');
+        socket.on('connect', function () {
+            socket.emit('authentication', { username: "faruk", password: "faruk" });
+            socket.on('authenticated', function () {
+                console.log("authenticated")
+                socket.on('unlock', function () {
+                    $.post("http://localhost:8080/unlock");
+                    console.log("UNLOCK THE LOCK!!!")
+                })
+
+                socket.on('lock', function () {
+                    $.post("http://localhost:8080/lock");
+                    console.log("LOCK THE LOCK!!!")
+                })
+
+                socket.on('ledR', function () {
+                    $.post("http://localhost:8080/ledr");
+                    console.log("Turn LED red!!!")
+                })
+
+                socket.on('ledG', function () {
+                    $.post("http://localhost:8080/ledg");
+                    console.log("Turn LED green!!!")
+                })
+
+                socket.on('ledB', function () {
+                    $.post("http://localhost:8080/ledb");
+                    console.log("Turn LED blue!!!")
+                })
+
+                socket.on('buzz', function () {
+                    $.post("http://localhost:8080/buzz");
+                    console.log("Buzz!!!")
+                })
+
+                socket.on('ledOn', function () {
+                    $.post("http://localhost:8080/ledOn");
+                    console.log("Turn LED on!!!")
+                })
+
+                socket.on('ledOff', function () {
+                    $.post("http://localhost:8080/ledOff");
+                    console.log("Turn LED off!!!")
+                })
+            });
+        });
+
+
+    </script>
+</body>
+
+</html>
