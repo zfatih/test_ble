@@ -45,10 +45,14 @@ const characteristicUUIDs = [BRAVA_RX_CHARACTERISTIC_UUID, BRAVA_TX_CHARACTERIST
 noble.on('stateChange', state => {
     if (state === 'poweredOn') {
         console.log('Scanning');
-        noble.startScanning(serviceUUIDs, true);
+        noble.startScanning(serviceUUIDs);
     } else {
         //noble.stopScanning();
     }
+});
+
+noble.on('scanStart', () => {
+	console.log('poceo skeniranje');
 });
 
 noble.on('scanStop', () => {
@@ -57,8 +61,9 @@ noble.on('scanStop', () => {
 
 noble.on('discover', peripheral => {
     // connect to the first peripheral that is scanned
-    //noble.stopScanning();
-    const { id } = peripheral;
+    noble.stopScanning();
+    console.log(`Discovered '${peripheral.advertisement.localName}' ${peripheral.id}`); 
+    const  id  = peripheral.id;
     let index = -1;
     for (let i = 0; i < devices.length; i++) {
         if (devices[i].id === id) {
@@ -67,7 +72,6 @@ noble.on('discover', peripheral => {
         }
     }
     if (index === -1) {
-        devices.push(peripheral);
         // console.log(peripheral);
         console.log(`Connecting to '${peripheral.advertisement.localName}' ${peripheral.id}`);
         connectAndSetUp(peripheral);
@@ -77,7 +81,14 @@ noble.on('discover', peripheral => {
 function connectAndSetUp(peripheral) {
 
     peripheral.connect(error => {
-        console.log('Connected to', peripheral.id);
+        console.log('Connected to', peripheral.advertisement.localName, peripheral.id);
+
+
+        devices.push(peripheral);
+
+	
+	// scan restart needed for raspberry
+	noble.startScanning(serviceUUIDs);
 
         // specify the services and characteristics to discover
 
@@ -86,27 +97,43 @@ function connectAndSetUp(peripheral) {
             characteristicUUIDs,
             onServicesAndCharacteristicsDiscovered
         );
+	console.log('Connected devices:', devices.map((device)=>{
+		return {
+			id: device.id,
+			name: device.advertisement.localName
+		}
+	}));
+
+		
+	    peripheral.on('disconnect', () => {
+		console.log('Disconnected from', peripheral.advertisement.localName, peripheral.id);
+	
+	        const { id } = peripheral;
+	        let index = -1;
+	        for (let i = 0; i < devices.length; i++) {
+	            if (devices[i].id === id) {
+	                index = i;
+	                break;
+	            }
+	        }
+	        if (index != -1) {
+	            devices.splice(index, 1);
+	        }
+		console.log('Connected devices:', devices.map((device)=>{
+			return {
+				id: device.id,
+				name: device.advertisement.localName
+			}
+		}));
+   	   });
     });
 
-    peripheral.on('disconnect', () => {
-        const { id } = peripheral;
-        let index = -1;
-        for (let i = 0; i < devices.length; i++) {
-            if (devices[i].id === id) {
-                index = i;
-                break;
-            }
-        }
-        if (index != -1) {
-            devices.splice(index, 1);
-        }
-    });
 }
 
 
 function onServicesAndCharacteristicsDiscovered(error, services, characteristics) {
     console.log('Discovered services and characteristics');
-    console.log(characteristics);
+    //console.log(characteristics);
    /* if(characteristics[1].uuid === BRAVA_TX_CHARACTERISTIC_UUID){
 
         
