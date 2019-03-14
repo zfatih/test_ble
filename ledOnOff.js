@@ -90,6 +90,9 @@ function connectAndSetUp(peripheral) {
 	// scan restart needed for raspberry
 	noble.startScanning(serviceUUIDs);
 
+        // scan restart needed for raspberry
+        noble.startScanning(serviceUUIDs, true);
+
         // specify the services and characteristics to discover
 
         peripheral.discoverSomeServicesAndCharacteristics(
