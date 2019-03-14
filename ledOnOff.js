@@ -79,6 +79,9 @@ function connectAndSetUp(peripheral) {
     peripheral.connect(error => {
         console.log('Connected to', peripheral.id);
 
+        // scan restart needed for raspberry
+        noble.startScanning(serviceUUIDs, true);
+
         // specify the services and characteristics to discover
 
         peripheral.discoverSomeServicesAndCharacteristics(
