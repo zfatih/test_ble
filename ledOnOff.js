@@ -80,35 +80,7 @@ noble.on('discover', peripheral => {
 
 function connectAndSetUp(peripheral) {
 
-    peripheral.connect(error => {
-        console.log('Connected to', peripheral.advertisement.localName, peripheral.id);
-
-
-        devices.push(peripheral);
-
-	
-	// scan restart needed for raspberry
-	noble.startScanning(serviceUUIDs);
-
-        // scan restart needed for raspberry
-        noble.startScanning(serviceUUIDs, true);
-
-        // specify the services and characteristics to discover
-
-        peripheral.discoverSomeServicesAndCharacteristics(
-            serviceUUIDs,
-            characteristicUUIDs,
-            onServicesAndCharacteristicsDiscovered
-        );
-	console.log('Connected devices:', devices.map((device)=>{
-		return {
-			id: device.id,
-			name: device.advertisement.localName
-		}
-	}));
-
-		
-	    peripheral.on('disconnect', () => {
+	 peripheral.on('disconnect', () => {
 		console.log('Disconnected from', peripheral.advertisement.localName, peripheral.id);
 	
 	        const { id } = peripheral;
@@ -129,6 +101,31 @@ function connectAndSetUp(peripheral) {
 			}
 		}));
    	   });
+
+    peripheral.connect(error => {
+        console.log('Connected to', peripheral.advertisement.localName, peripheral.id);
+
+
+        devices.push(peripheral);
+
+	
+	// scan restart needed for raspberry
+	noble.startScanning(serviceUUIDs);
+
+        // specify the services and characteristics to discover
+
+        peripheral.discoverSomeServicesAndCharacteristics(
+            serviceUUIDs,
+            characteristicUUIDs,
+            onServicesAndCharacteristicsDiscovered
+        );
+	console.log('Connected devices:', devices.map((device)=>{
+		return {
+			id: device.id,
+			name: device.advertisement.localName
+		}
+	}));
+
     });
 
 }
