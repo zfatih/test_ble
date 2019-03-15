@@ -210,7 +210,7 @@ app.post('/ledb/:deviceID', function (req, res) {
 
 app.post('/lock/:deviceID', function (req, res) {
     var deviceID = req.params.deviceID;
-    const message = new Buffer('CPLIN');
+    const message = new Buffer('CPLOUT');
     console.log("Sending:  '" + message + "'");
     for (let i = 0; i < devices.length; i++) {
         if (deviceID === devices[i].id) {
@@ -225,7 +225,7 @@ app.post('/lock/:deviceID', function (req, res) {
 
 app.post('/unlock/:deviceID', function (req, res) {
     var deviceID = req.params.deviceID;
-    const message = new Buffer('CPLOUT');
+    const message = new Buffer('CPLIN');
     console.log("Sending:  '" + message + "'");
     for (let i = 0; i < devices.length; i++) {
         if (deviceID === devices[i].id) {
@@ -290,11 +290,11 @@ app.post('/ledb', function (req, res) {
 });
 
 app.post('/lock', function (req, res) {
-    const message = new Buffer('CPLIN');
+    const message = new Buffer('CPLOUT');
     console.log("Sending:  '" + message + "'");
     for (let i = 0; i < devices.length; i++) {
             for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
+		devices[i].services[0].characteristics[j].write(message, true);
             }
     }
     res.setHeader('Content-Type', 'text/html');
@@ -302,7 +302,7 @@ app.post('/lock', function (req, res) {
 });
 
 app.post('/unlock', function (req, res) {
-    const message = new Buffer('CPLOUT');
+    const message = new Buffer('CPLIN');
     console.log("Sending:  '" + message + "'");
     for (let i = 0; i < devices.length; i++) {
             for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
