@@ -1,46 +1,16 @@
-// Connect to a peripheral running the echo service
-// https://github.com/noble/bleno/blob/master/examples/echo
-
-// subscribe to be notified when the value changes
-// start an interval to write data to the characteristic
-
-//const noble = require('noble');
 const noble = require('noble');
-const express = require('express');
-const bodyParser = require('body-parser');
-
-const app = express();
-
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    next();
-});
-app.use(express.static("public"));
-
-const baseURL = 'http://localhost:8080';
-
-//var peripheralIdOrAddress = process.argv[2].toLowerCase();
 
 var devices = [];
 
-const BRAVA_SERVICE_UUID = '6e400001b5a3f393e0a9e50e24dcca9e'
-const BRAVA_RX_CHARACTERISTIC_UUID = '6e400002b5a3f393e0a9e50e24dcca9e'
-const BRAVA_TX_CHARACTERISTIC_UUID = '6e400003b5a3f393e0a9e50e24dcca9e'
+const LOCK_SERVICE_UUID = '6e400001b5a3f393e0a9e50e24dcca9e'
+const LOCK_RX_CHARACTERISTIC_UUID = '6e400002b5a3f393e0a9e50e24dcca9e'
+const LOCK_TX_CHARACTERISTIC_UUID = '6e400003b5a3f393e0a9e50e24dcca9e'
 
 const LED_SERVICE_UUID = '000015231212efde1523785feabcd123';
 const LED_CHARACTERISTIC_UUID = '000015251212efde1523785feabcd123';
-/*
-const serviceUUIDs = [BRAVA_SERVICE_UUID];
-const characteristicUUIDs = [BRAVA_RX_CHARACTERISTIC_UUID, BRAVA_TX_CHARACTERISTIC_UUID];
 
-const serviceUUIDs = [LED_SERVICE_UUID];
-const characteristicUUIDs = [LED_CHARACTERISTIC_UUID];
-*/
-const serviceUUIDs = [BRAVA_SERVICE_UUID, LED_SERVICE_UUID];
-const characteristicUUIDs = [BRAVA_RX_CHARACTERISTIC_UUID, BRAVA_TX_CHARACTERISTIC_UUID, LED_CHARACTERISTIC_UUID];
+const serviceUUIDs = [LOCK_SERVICE_UUID, LED_SERVICE_UUID];
+const characteristicUUIDs = [LOCK_RX_CHARACTERISTIC_UUID, LOCK_TX_CHARACTERISTIC_UUID, LED_CHARACTERISTIC_UUID];
 
 noble.on('stateChange', state => {
     if (state === 'poweredOn') {
@@ -52,18 +22,18 @@ noble.on('stateChange', state => {
 });
 
 noble.on('scanStart', () => {
-	console.log('poceo skeniranje');
+    console.log('Started scanning for devices!');
 });
 
 noble.on('scanStop', () => {
-    console.log('zaustavio skeniranje');
+    console.log('Scan stopped!');
 });
 
 noble.on('discover', peripheral => {
-    // connect to the first peripheral that is scanned
+    // peripheral device discovered, stop scanning
     noble.stopScanning();
-    console.log(`Discovered '${peripheral.advertisement.localName}' ${peripheral.id}`); 
-    const  id  = peripheral.id;
+    console.log(`Discovered '${peripheral.advertisement.localName}' ${peripheral.id}`);
+    const id = peripheral.id;
     let index = -1;
     for (let i = 0; i < devices.length; i++) {
         if (devices[i].id === id) {
@@ -72,285 +42,159 @@ noble.on('discover', peripheral => {
         }
     }
     if (index === -1) {
-        // console.log(peripheral);
+        // not connected to discovered peripheral, starting connection
         console.log(`Connecting to '${peripheral.advertisement.localName}' ${peripheral.id}`);
         connectAndSetUp(peripheral);
     }
 });
 
 function connectAndSetUp(peripheral) {
-
-	 peripheral.on('disconnect', () => {
-		console.log('Disconnected from', peripheral.advertisement.localName, peripheral.id);
-	
-	        const { id } = peripheral;
-	        let index = -1;
-	        for (let i = 0; i < devices.length; i++) {
-	            if (devices[i].id === id) {
-	                index = i;
-	                break;
-	            }
-	        }
-	        if (index != -1) {
-	            devices.splice(index, 1);
-	        }
-		console.log('Connected devices:', devices.map((device)=>{
-			return {
-				id: device.id,
-				name: device.advertisement.localName
-			}
-		}));
-   	   });
+    peripheral.on('disconnect', () => {
+        const { id } = peripheral;
+        let index = -1;
+        for (let i = 0; i < devices.length; i++) {
+            if (devices[i].id === id) {
+                index = i;
+                break;
+            }
+        }
+        if (index != -1) {
+            devices.splice(index, 1);
+            console.log('Disconnected from', peripheral.advertisement.localName, peripheral.id);
+            console.log('Connected devices:', devices.map((device) => {
+                return {
+                    id: device.id,
+                    name: device.advertisement.localName
+                }
+            }));
+        }
+    });
 
     peripheral.connect(error => {
         console.log('Connected to', peripheral.advertisement.localName, peripheral.id);
 
-
         devices.push(peripheral);
 
-	
-	// scan restart needed for raspberry
-	noble.startScanning(serviceUUIDs);
+        // scan restart needed for raspberry
+        noble.startScanning(serviceUUIDs);
 
         // specify the services and characteristics to discover
-
         peripheral.discoverSomeServicesAndCharacteristics(
             serviceUUIDs,
             characteristicUUIDs,
             onServicesAndCharacteristicsDiscovered
         );
-	console.log('Connected devices:', devices.map((device)=>{
-		return {
-			id: device.id,
-			name: device.advertisement.localName
-		}
-	}));
+        console.log('Connected devices:', devices.map((device) => {
+            return {
+                id: device.id,
+                name: device.advertisement.localName
+            }
+        }));
 
     });
 
 }
 
-
 function onServicesAndCharacteristicsDiscovered(error, services, characteristics) {
-    console.log('Discovered services and characteristics');
-    //console.log(characteristics);
-   /* if(characteristics[1].uuid === BRAVA_TX_CHARACTERISTIC_UUID){
-
-        
-        const echoCharacteristic = characteristics[1];
-        // data callback receives notifications
-        echoCharacteristic.on('data', (data, isNotification) => {
-            console.log('Received: "' + data + '"');
-        });
-
-        // subscribe to be notified whenever the peripheral update the characteristic
-        console.log('pozivam subscribe');
-        echoCharacteristic.subscribe(error => {
-            if (error) {
-                console.error('Error subscribing to echoCharacteristic');
-            } else {
-                console.log('Subscribed for echoCharacteristic notifications');
-            }
-        });
-    }*/
-    
-    // create an interval to send data to the service
-    // setInterval(() => {
-        //     count = 1 - count;
-        //     const message = new Buffer([count]);
-        //     console.log("Sending:  '" + message + "'");
-        //     echoCharacteristic.write(message, true);
-        // }, 2500);
+    console.log('Discovered services and characteristics', characteristics);
+    for(let i=0;i<characteristics.length;i++){
+        switch(characteristics[i].uuid){
+            case LOCK_RX_CHARACTERISTIC_UUID:
+                break;
+            case LOCK_TX_CHARACTERISTIC_UUID:
+                characteristics[i].on('data', (data, isNotification) => {
+                    console.log('Received: "' + data + '"');
+                });
+                // notify characteristic
+                characteristics[i].subscribe(error => {
+                    if (error) {
+                        console.error('Error subscribing to characteristic!');
+                    } else {
+                        console.log('Subscribed for lock notifications!');
+                    }
+                });
+                break;
+            case LED_CHARACTERISTIC_UUID:
+                break;
+            default:
+        }
+    }
 }
 
-app.post('/ledg/:deviceID', function (req, res) {
-    var deviceID = req.params.deviceID;
-    const message = new Buffer('LEDG');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-        if (deviceID === devices[i].id) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
-            }
-        }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
+var io = require('socket.io-client');
+var socket = io('https://brave.semirsakanovic.com/');
+
+let LOCK_DEVICE_TYPE = 'lock';
+let BLINKY_DEVICE_TYPE = 'blinky';
+
+socket.on('connect', function () {
+    socket.emit('authentication', { username: "faruk", password: "faruk" });
 });
 
-app.post('/ledr/:deviceID', function (req, res) {
-    var deviceID = req.params.deviceID;
-    const message = new Buffer('LEDR');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-        if (deviceID === devices[i].id) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
-            }
-        }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
+socket.on('authenticated', function () {
+    console.log("authenticated")
 });
 
-app.post('/ledb/:deviceID', function (req, res) {
-    var deviceID = req.params.deviceID;
-    const message = new Buffer('LEDB');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-        if (deviceID === devices[i].id) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
-            }
-        }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
-});
-
-app.post('/lock/:deviceID', function (req, res) {
-    var deviceID = req.params.deviceID;
-    const message = new Buffer('CPLOUT');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-        if (deviceID === devices[i].id) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
-            }
-        }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
-});
-
-app.post('/unlock/:deviceID', function (req, res) {
-    var deviceID = req.params.deviceID;
-    const message = new Buffer('CPLIN');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-        if (deviceID === devices[i].id) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
-            }
-        }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
-});
-
-app.post('/buzz/:deviceID', function (req, res) {
-    var deviceID = req.params.deviceID;
-    const message = new Buffer('BUZZ');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-        if (deviceID === devices[i].id) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
-            }
-        }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
-});
-
-app.post('/ledg', function (req, res) {
-    const message = new Buffer('LEDG');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
-            }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
-});
-
-app.post('/ledr', function (req, res) {
-    const message = new Buffer('LEDR');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
-            }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
-});
-
-app.post('/ledb', function (req, res) {
-    const message = new Buffer('LEDB');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
-            }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
-});
-
-app.post('/lock', function (req, res) {
-    const message = new Buffer('CPLOUT');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-		devices[i].services[0].characteristics[j].write(message, true);
-            }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
-});
-
-app.post('/unlock', function (req, res) {
-    const message = new Buffer('CPLIN');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
-            }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
-});
-
-app.post('/buzz', function (req, res) {
-    const message = new Buffer('BUZZ');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-            for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-                devices[i].services[0].characteristics[j].write(message, true);
-            }
-    }
-    res.setHeader('Content-Type', 'text/html');
-    return res.redirect('/');
-});
-
-app.post('/ledOn', function(req, res){
-    const message = new Buffer([1], 'hex');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-        for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-            devices[i].services[0].characteristics[j].write(message, true);
-        }
-    }
-    return res.redirect('/');
+socket.on('unlock', function () {
+    sendToBTDevices('CPLIN', LOCK_DEVICE_TYPE)
+    console.log("UNLOCK THE LOCK!!!")
 })
 
-app.post('/ledOff', function(req, res){
-    const message = new Buffer([0], 'hex');
-    console.log("Sending:  '" + message + "'");
-    for (let i = 0; i < devices.length; i++) {
-        for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
-            devices[i].services[0].characteristics[j].write(message, true);
-        }
-    }
-    return res.redirect('/');
+socket.on('lock', function () {
+    sendToBTDevices('CPLOUT', LOCK_DEVICE_TYPE)
+    console.log("LOCK THE LOCK!!!")
 })
 
-app.get('/devices', function (req, res) {
-    let devices_ids = devices.map(device => device.id);
-    console.log(devices_ids);
-    res.json(devices_ids);
-});
+socket.on('ledR', function () {
+    sendToBTDevices('LEDR', LOCK_DEVICE_TYPE)
+    console.log("Turn LED red!!!")
+})
 
-app.listen(8080);
+socket.on('ledG', function () {
+    sendToBTDevices('LEDG', LOCK_DEVICE_TYPE)
+    console.log("Turn LED green!!!")
+})
+
+socket.on('ledB', function () {
+    sendToBTDevices('LEDB', LOCK_DEVICE_TYPE)
+    console.log("Turn LED blue!!!")
+})
+
+socket.on('buzz', function () {
+    sendToBTDevices('BUZZ', LOCK_DEVICE_TYPE);
+    console.log("Buzz!!!")
+})
+
+socket.on('ledOn', function () {
+    sendToBTDevices([1], BLINKY_DEVICE_TYPE);
+    console.log("Turn LED on!!!")
+})
+
+socket.on('ledOff', function () {
+    sendToBTDevices([0], BLINKY_DEVICE_TYPE);
+    console.log("Turn LED off!!!")
+})
+
+function sendToBTDevices(message, deviceType){
+    const buffer = Buffer.from(message);
+    console.log("Sending:  '" + buffer + "'");
+    for (let i = 0; i < devices.length; i++) {
+        for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
+            switch(devices[i].services[0].characteristics[j].uuid){
+                case LOCK_RX_CHARACTERISTIC_UUID:
+                    if(deviceType === LOCK_DEVICE_TYPE){
+                        devices[i].services[0].characteristics[j].write(buffer, true);
+                    }
+                    break;
+                case LOCK_TX_CHARACTERISTIC_UUID:
+                    break;
+                case LED_CHARACTERISTIC_UUID:
+                    if(deviceType === BLINKY_DEVICE_TYPE){
+                        devices[i].services[0].characteristics[j].write(buffer, true);
+                    }
+                    break;
+                default:
+            }
+        }
+    }
+}
