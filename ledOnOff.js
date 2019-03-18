@@ -127,8 +127,10 @@ var socket = io('https://brave.semirsakanovic.com/');
 let LOCK_DEVICE_TYPE = 'lock';
 let BLINKY_DEVICE_TYPE = 'blinky';
 
+let username = process.argv[process.argv.length - 1];
+
 socket.on('connect', function () {
-    socket.emit('authentication', { username: "faruk", password: "faruk" });
+    socket.emit('authentication', { username: username, password: username });
 });
 
 socket.on('authenticated', function () {
