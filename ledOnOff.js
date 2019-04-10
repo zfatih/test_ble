@@ -1,4 +1,5 @@
 const noble = require('noble');
+var ping = require('jjg-ping');
 
 var devices = [];
 
@@ -14,7 +15,7 @@ const characteristicUUIDs = [LOCK_RX_CHARACTERISTIC_UUID, LOCK_TX_CHARACTERISTIC
 
 noble.on('stateChange', state => {
     if (state === 'poweredOn') {
-        console.log('Scanning');
+        log('Scanning');
         noble.startScanning(serviceUUIDs);
     } else {
         //noble.stopScanning();
@@ -22,17 +23,17 @@ noble.on('stateChange', state => {
 });
 
 noble.on('scanStart', () => {
-    console.log('Started scanning for devices!');
+    log('Started scanning for devices!');
 });
 
 noble.on('scanStop', () => {
-    console.log('Scan stopped!');
+    log('Scan stopped!');
 });
 
 noble.on('discover', peripheral => {
     // peripheral device discovered, stop scanning
     noble.stopScanning();
-    console.log(`Discovered '${peripheral.advertisement.localName}' ${peripheral.id}`);
+    log(`Discovered '${peripheral.advertisement.localName}' ${peripheral.id}`);
     const id = peripheral.id;
     let index = -1;
     for (let i = 0; i < devices.length; i++) {
@@ -43,7 +44,7 @@ noble.on('discover', peripheral => {
     }
     if (index === -1) {
         // not connected to discovered peripheral, starting connection
-        console.log(`Connecting to '${peripheral.advertisement.localName}' ${peripheral.id}`);
+        log(`Connecting to '${peripheral.advertisement.localName}' ${peripheral.id}`);
         connectAndSetUp(peripheral);
     }
 });
@@ -60,8 +61,8 @@ function connectAndSetUp(peripheral) {
         }
         if (index != -1) {
             devices.splice(index, 1);
-            console.log('Disconnected from', peripheral.advertisement.localName, peripheral.id);
-            console.log('Connected devices:', devices.map((device) => {
+            log('Disconnected from', peripheral.advertisement.localName, peripheral.id);
+            log('Connected devices:', devices.map((device) => {
                 return {
                     id: device.id,
                     name: device.advertisement.localName
@@ -71,7 +72,7 @@ function connectAndSetUp(peripheral) {
     });
 
     peripheral.connect(error => {
-        console.log('Connected to', peripheral.advertisement.localName, peripheral.id);
+        log('Connected to', peripheral.advertisement.localName, peripheral.id);
 
         devices.push(peripheral);
 
@@ -84,7 +85,7 @@ function connectAndSetUp(peripheral) {
             characteristicUUIDs,
             onServicesAndCharacteristicsDiscovered
         );
-        console.log('Connected devices:', devices.map((device) => {
+        log('Connected devices:', devices.map((device) => {
             return {
                 id: device.id,
                 name: device.advertisement.localName
@@ -96,21 +97,21 @@ function connectAndSetUp(peripheral) {
 }
 
 function onServicesAndCharacteristicsDiscovered(error, services, characteristics) {
-    console.log('Discovered services and characteristics', characteristics);
+    log('Discovered services and characteristics', characteristics);
     for(let i=0;i<characteristics.length;i++){
         switch(characteristics[i].uuid){
             case LOCK_RX_CHARACTERISTIC_UUID:
                 break;
             case LOCK_TX_CHARACTERISTIC_UUID:
                 characteristics[i].on('data', (data, isNotification) => {
-                    console.log('Received: "' + data + '"');
+                    log('Received: "' + data + '"');
                 });
                 // notify characteristic
                 characteristics[i].subscribe(error => {
                     if (error) {
                         console.error('Error subscribing to characteristic!');
                     } else {
-                        console.log('Subscribed for lock notifications!');
+                        log('Subscribed for lock notifications!');
                     }
                 });
                 break;
@@ -121,6 +122,10 @@ function onServicesAndCharacteristicsDiscovered(error, services, characteristics
     }
 }
 
+function log(){
+    console.log.apply(null, [new Date().toISOString().replace(/T/, ' ').replace(/\..+/, ''), ...arguments]);
+}
+
 var io = require('socket.io-client');
 var socket = io('https://brave.semirsakanovic.com/');
 
@@ -129,57 +134,76 @@ let BLINKY_DEVICE_TYPE = 'blinky';
 
 let username = process.argv[process.argv.length - 1];
 
+function pingGoogle(){
+    ping.system.ping('google.com', function(latency, status) {
+        if (status) {
+            // Host is reachable/up. Latency should have a value.
+            log('Google is reachable (' + latency + ' ms ping).');
+        }
+        else {
+            // Host is down. Latency should be 0.
+            log('Google is unreachable.');
+        }
+    });
+}
+
 socket.on('connect', function () {
+    log('connect evt');
     socket.emit('authentication', { username: username, password: username });
 });
 
+socket.on('disconnect', function () {
+    log('disconnect evt');
+    pingGoogle();
+});
+
 socket.on('authenticated', function () {
-    console.log("authenticated")
+    log("authenticated")
 });
 
 socket.on('unlock', function () {
     sendToBTDevices('CPLIN', LOCK_DEVICE_TYPE)
-    console.log("UNLOCK THE LOCK!!!")
+    log("UNLOCK THE LOCK!!!")
 })
 
 socket.on('lock', function () {
     sendToBTDevices('CPLOUT', LOCK_DEVICE_TYPE)
-    console.log("LOCK THE LOCK!!!")
+    log("LOCK THE LOCK!!!")
 })
 
 socket.on('ledR', function () {
     sendToBTDevices('LEDR', LOCK_DEVICE_TYPE)
-    console.log("Turn LED red!!!")
+    log("Turn LED red!!!")
 })
 
 socket.on('ledG', function () {
     sendToBTDevices('LEDG', LOCK_DEVICE_TYPE)
-    console.log("Turn LED green!!!")
+    log("Turn LED green!!!")
 })
 
 socket.on('ledB', function () {
     sendToBTDevices('LEDB', LOCK_DEVICE_TYPE)
-    console.log("Turn LED blue!!!")
+    log("Turn LED blue!!!")
 })
 
 socket.on('buzz', function () {
     sendToBTDevices('BUZZ', LOCK_DEVICE_TYPE);
-    console.log("Buzz!!!")
+    log("Buzz!!!")
 })
 
 socket.on('ledOn', function () {
     sendToBTDevices([1], BLINKY_DEVICE_TYPE);
-    console.log("Turn LED on!!!")
+    log("Turn LED on!!!")
 })
 
 socket.on('ledOff', function () {
     sendToBTDevices([0], BLINKY_DEVICE_TYPE);
-    console.log("Turn LED off!!!")
+    log("Turn LED off!!!")
 })
 
 function sendToBTDevices(message, deviceType){
     const buffer = Buffer.from(message);
-    console.log("Sending:  '" + buffer + "'");
+    log("Sending:  '" + buffer + "'");
     for (let i = 0; i < devices.length; i++) {
         for (let j = 0; j < devices[i].services[0].characteristics.length; j++) {
             switch(devices[i].services[0].characteristics[j].uuid){
