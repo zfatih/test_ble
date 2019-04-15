@@ -154,6 +154,10 @@ socket.on('connect', function () {
 
 socket.on('disconnect', function () {
     log('disconnect evt');
+    if(socket.io.connecting.indexOf(socket) === -1){
+        log('connecting manually');
+        socket.connect();
+    }
     pingGoogle();
 });
 
