@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "async": "^2.6.2",
+    "async": "^3.2.2",
     "express": "^4.16.4",
     "jjg-ping": "^1.0.3",
     "noble": "^1.9.1",
